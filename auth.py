@@ -43,11 +43,15 @@ def init_auth_db():
 # ── Password hashing ──────────────────────────────────────────────────────────
 _pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+def _truncate(plain: str) -> str:
+    """bcrypt silently truncates or errors after 72 bytes — truncate explicitly."""
+    return plain.encode("utf-8")[:72].decode("utf-8", errors="ignore")
+
 def hash_password(plain: str) -> str:
-    return _pwd.hash(plain)
+    return _pwd.hash(_truncate(plain))
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return _pwd.verify(plain, hashed)
+    return _pwd.verify(_truncate(plain), hashed)
 
 
 # ── Signed session cookies ────────────────────────────────────────────────────
