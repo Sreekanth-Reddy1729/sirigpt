@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SreeGPT – Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: Inter, Arial, Helvetica, sans-serif;
+            background: #212121;
+            color: #ececec;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card {
+            background: #171717;
+            border: 1px solid #2f2f2f;
+            border-radius: 20px;
+            padding: 40px 36px;
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .logo h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #10a37f;
+        }
+
+        .logo p {
+            color: #888;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            color: #aaa;
+            margin-bottom: 6px;
+        }
+
+        input {
+            width: 100%;
+            background: #2a2a2a;
+            border: 1px solid #3f3f3f;
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: #ececec;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            border-color: #10a37f;
+        }
+
+        .btn {
+            width: 100%;
+            background: #10a37f;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 13px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: #0d8f6e;
+        }
+
+        .error {
+            background: #3f1f1f;
+            border: 1px solid #7f3f3f;
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: #ff7070;
+            font-size: 14px;
+            margin-bottom: 18px;
+        }
+
+        .success {
+            background: #1a3f2f;
+            border: 1px solid #2a7f5f;
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: #5fdf9f;
+            font-size: 14px;
+            margin-bottom: 18px;
+        }
+
+        .alt-link {
+            text-align: center;
+            margin-top: 22px;
+            font-size: 14px;
+            color: #888;
+        }
+
+        .alt-link a {
+            color: #10a37f;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .alt-link a:hover {
+            text-decoration: underline;
+        }
+
+        .divider {
+            border: none;
+            border-top: 1px solid #2f2f2f;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="logo">
+        <h1>SreeGPT</h1>
+        <p>Agentic AI Chatbot — Sign in to continue</p>
+    </div>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="success">{{ success }}</div>
+    {% endif %}
+
+    <form method="POST" action="/login">
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input
+                type="text"
+                id="username"
+                name="username"
+                placeholder="your_username"
+                autocomplete="username"
+                required
+            >
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input
+                type="password"
+                id="password"
+                name="password"
+                placeholder="••••••••"
+                autocomplete="current-password"
+                required
+            >
+        </div>
+
+        <button type="submit" class="btn">Sign In</button>
+    </form>
+
+    <div class="alt-link">
+        Don't have an account? <a href="/signup">Create one</a>
+    </div>
+</div>
+
+</body>
+</html>

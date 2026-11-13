@@ -18,3 +18,8 @@ docx2txt==0.9
 langchain-tavily==0.2.18
 tavily-python==0.7.24
 sqlalchemy==2.0.50
+
+# Auth
+passlib[bcrypt]==1.7.4
+itsdangerous==2.2.0
+certifi

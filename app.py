@@ -12,8 +12,8 @@ import uuid
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, Request, UploadFile, File, Form
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi import FastAPI, Request, UploadFile, File, Form, Depends
+from fastapi.responses import StreamingResponse, JSONResponse, RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from langchain_core.messages import (
@@ -34,6 +34,18 @@ from database import (
 from rag import add_document_to_rag
 from tools import set_current_thread_id
 
+# ── Auth ──────────────────────────────────────────────────────────────────────
+from auth import (
+    init_auth_db,
+    get_current_user,
+    get_user_by_username,
+    get_user_by_email,
+    create_user,
+    verify_password,
+    create_session_token,
+    COOKIE_NAME,
+    SESSION_MAX_AGE,
+)
 
 app = FastAPI()
 
@@ -42,22 +54,153 @@ templates = Jinja2Templates(directory="templates")
 Path("uploads").mkdir(exist_ok=True)
 Path("data").mkdir(exist_ok=True)
 
-
 init_db()
+init_auth_db()
 
 
-@app.get("/")
-async def home(request: Request):
+# ── Auth routes ───────────────────────────────────────────────────────────────
+
+@app.get("/login")
+async def login_page(request: Request):
+    # Already logged in → redirect to home
+    if get_current_user(request):
+        return RedirectResponse("/", status_code=302)
+    success = request.query_params.get("success")
     return templates.TemplateResponse(
         request=request,
-        name="index.html",
-        context={}
+        name="login.html",
+        context={"error": None, "success": success},
     )
 
 
+@app.post("/login")
+async def login_submit(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+):
+    user = get_user_by_username(username.strip())
+    if not user or not verify_password(password, user.password):
+        return templates.TemplateResponse(
+            request=request,
+            name="login.html",
+            context={"error": "Invalid username or password.", "success": None},
+            status_code=401,
+        )
+
+    token = create_session_token(user.username)
+    response = RedirectResponse("/", status_code=302)
+    response.set_cookie(
+        key=COOKIE_NAME,
+        value=token,
+        max_age=SESSION_MAX_AGE,
+        httponly=True,
+        samesite="lax",
+        secure=False,  # set True in production with HTTPS
+    )
+    return response
+
+
+@app.get("/signup")
+async def signup_page(request: Request):
+    if get_current_user(request):
+        return RedirectResponse("/", status_code=302)
+    return templates.TemplateResponse(
+        request=request,
+        name="signup.html",
+        context={"error": None},
+    )
+
+
+@app.post("/signup")
+async def signup_submit(
+    request: Request,
+    username: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    confirm_password: str = Form(...),
+):
+    username = username.strip()
+    email = email.strip().lower()
+
+    # Validations
+    if len(username) < 3 or len(username) > 32:
+        return templates.TemplateResponse(
+            request=request,
+            name="signup.html",
+            context={"error": "Username must be 3–32 characters."},
+            status_code=400,
+        )
+
+    if not username.replace("_", "").isalnum():
+        return templates.TemplateResponse(
+            request=request,
+            name="signup.html",
+            context={"error": "Username can only contain letters, numbers, and underscores."},
+            status_code=400,
+        )
+
+    if len(password) < 6:
+        return templates.TemplateResponse(
+            request=request,
+            name="signup.html",
+            context={"error": "Password must be at least 6 characters."},
+            status_code=400,
+        )
+
+    if password != confirm_password:
+        return templates.TemplateResponse(
+            request=request,
+            name="signup.html",
+            context={"error": "Passwords do not match."},
+            status_code=400,
+        )
+
+    if get_user_by_username(username):
+        return templates.TemplateResponse(
+            request=request,
+            name="signup.html",
+            context={"error": "Username already taken. Please choose another."},
+            status_code=400,
+        )
+
+    if get_user_by_email(email):
+        return templates.TemplateResponse(
+            request=request,
+            name="signup.html",
+            context={"error": "An account with that email already exists."},
+            status_code=400,
+        )
+
+    create_user(username=username, email=email, plain_password=password)
+    return RedirectResponse("/login?success=Account+created!+Please+sign+in.", status_code=302)
+
+
+@app.get("/logout")
+async def logout():
+    response = RedirectResponse("/login", status_code=302)
+    response.delete_cookie(COOKIE_NAME)
+    return response
+
+
+# ── Protected app routes ──────────────────────────────────────────────────────
+
+@app.get("/")
+async def home(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+        context={"username": user}
+    )
+
 
 @app.get("/conversations")
-async def conversations():
+async def conversations(request: Request):
+    if not get_current_user(request):
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
     items = list_conversations()
 
     return {
@@ -75,7 +218,9 @@ async def conversations():
 
 
 @app.get("/history/{thread_id}")
-async def history(thread_id: str):
+async def history(thread_id: str, request: Request):
+    if not get_current_user(request):
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
     messages = get_chat_history(thread_id)
 
     return {
@@ -93,9 +238,12 @@ async def history(thread_id: str):
 
 @app.post("/upload")
 async def upload_document(
+    request: Request,
     file: UploadFile = File(...),
-    thread_id: str = Form(...)
+    thread_id: str = Form(...),
 ):
+    if not get_current_user(request):
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
     try:
         allowed_extensions = [".pdf", ".docx", ".txt", ".md", ".py", ".csv"]
 
@@ -216,6 +364,9 @@ def extract_text_from_chunk(chunk) -> str:
 
 @app.post("/chat/stream")
 async def chat_stream(request: Request):
+    if not get_current_user(request):
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
     try:
         data = await request.json()
     except Exception:
@@ -293,7 +444,6 @@ async def chat_stream(request: Request):
 
 
 
-
 if __name__ == "__main__":
    
     uvicorn.run(
@@ -302,4 +452,3 @@ if __name__ == "__main__":
         port=8080,
         reload=True
     )
-

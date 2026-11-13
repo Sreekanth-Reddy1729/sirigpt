@@ -464,7 +464,11 @@
 <main class="main">
     <div class="topbar">
         <div>Agentic AI Chatbot</div>
-        <div class="status" id="status">Ready</div>
+        <div style="display:flex;align-items:center;gap:14px;">
+            <div class="status" id="status">Ready</div>
+            {% if username %}<span style="font-size:13px;color:#aaa;">&#128100; {{ username }}</span>
+            <a href="/logout" style="font-size:13px;color:#ff6b6b;text-decoration:none;border:1px solid #3f3f3f;padding:5px 12px;border-radius:8px;">Logout</a>{% endif %}
+        </div>
     </div>
 
     <div class="chat-container" id="chatContainer">

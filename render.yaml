@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: sreegpt
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GOOGLE_MODEL
+        value: gemini-2.5-flash
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: LANGSMITH_TRACING
+        value: "false"
+      - key: LANGSMITH_ENDPOINT
+        value: https://api.smith.langchain.com
+      - key: LANGSMITH_API_KEY
+        sync: false
+      - key: LANGSMITH_PROJECT
+        value: sreegpt
+    disk:
+      name: sreegpt-data
+      mountPath: /app/data
+      sizeGB: 1
