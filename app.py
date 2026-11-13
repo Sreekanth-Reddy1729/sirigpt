@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 import os
 import certifi
 
+
 load_dotenv()
 
 os.environ["SSL_CERT_FILE"] = certifi.where()
@@ -48,6 +49,16 @@ from auth import (
 )
 
 app = FastAPI()
+
+# Serve static assets and the service worker.
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+Path("static").mkdir(exist_ok=True)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/sw.js")
+async def service_worker():
+    return FileResponse("static/sw.js", media_type="application/javascript")
 
 templates = Jinja2Templates(directory="templates")
 
